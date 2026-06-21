@@ -93,15 +93,25 @@
 - 管理员自动拥有所有集群访问权限
 - 其他用户需要管理员分配可访问的集群
 
+## 环境要求
+
+- Go 1.22+
+- Node.js 20+
+- 可访问的 Kubernetes 集群（kubeconfig 配置好）
+
 ## 快速开始
 
 ### 开发环境
 
 ```bash
-# 初始化项目
+# 克隆项目
+git clone https://github.com/zl528/KubeOps.git
+cd KubeOps
+
+# 初始化项目（安装Go和npm依赖）
 make setup
 
-# 启动开发环境
+# 启动开发环境（后端:8080, 前端:3000）
 make dev
 
 # 运行测试
