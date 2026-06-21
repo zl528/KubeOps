@@ -1,120 +1,97 @@
 # KubeOps - Kubernetes 运维管理平台
 
-一个功能完整的 Kubernetes 运维管理平台，提供集群管理、应用部署、CI/CD 流水线、监控告警、安全审计等能力。
+一个轻量级的 Kubernetes 运维管理平台，提供资源管理、权限控制、监控告警、审计日志等能力。
 
 ## 技术栈
 
-- **前端**: Vue 3 + TypeScript + Element Plus
+- **前端**: Vue 3 + TypeScript + Element Plus + ECharts
 - **后端**: Go + client-go
+- **数据库**: SQLite
 - **部署**: 支持 K8s 集群内部署和独立部署
 
 ## 功能模块
 
 ### 1. 集群管理
-- 节点管理（查看、状态、版本、资源）
-- 命名空间管理（列表、标签）
-- 资源配额管理（CRUD）
-- 集群概览（资源使用率、健康状态）
+- 多集群支持（连接、切换、断开）
+- 集群概览（节点、Pod、资源使用率）
+- 节点管理（查看状态、资源）
+- 命名空间管理
 
 ### 2. 工作负载
-- Deployment（列表、扩缩容、重启、回滚、删除）
-- StatefulSet（列表、扩缩容、重启、删除）
-- DaemonSet（列表、重启、删除）
-- CronJob（列表、暂停/恢复、删除）
-- Job（列表、删除）
+- Deployment（详情、编辑、扩缩容、重启、回滚、删除）
+- StatefulSet（详情、编辑、扩缩容、重启、删除）
+- DaemonSet（详情、编辑、重启、删除）
+- CronJob（编辑、暂停/恢复、删除）
+- Job（详情、删除）
 
 ### 3. Pod 管理
 - Pod 列表、详情、日志查看
 - Pod 删除、重启
-- Pod Exec 命令执行
-- Pod Port Forward 端口转发
-- 实时日志流
+- Pod 终端（WebSocket）
 
 ### 4. 网络管理
-- Service（列表、类型、端口）
-- Ingress（列表、Host、TLS）
-- NetworkPolicy（列表、Ingress/Egress 规则）
-- Endpoint（列表、地址、端口）
+- Service（详情、编辑、删除）
+- Ingress（详情、删除）
+- NetworkPolicy（列表、删除）
+- Endpoint（列表）
 
 ### 5. 配置管理
-- ConfigMap（列表、详情、删除）
-- Secret（列表、类型、数据键）
-- LimitRange（列表、限制规则）
-- ResourceQuota（CRUD）
+- ConfigMap（详情、编辑、删除）
+- Secret（详情、编辑、删除）
 
 ### 6. RBAC 管理
-- Role / ClusterRole（列表、规则、删除）
-- RoleBinding / ClusterRoleBinding（列表、绑定对象、删除）
-- ServiceAccount（列表、删除）
+- Role / ClusterRole（编辑、删除）
+- RoleBinding / ClusterRoleBinding（删除）
+- ServiceAccount（删除）
 
 ### 7. 存储管理
-- PersistentVolume（列表、容量、状态、回收策略）
-- PersistentVolumeClaim（列表、状态、关联 PV）
-- StorageClass（列表、Provisioner、绑定模式）
+- PersistentVolume（列表）
+- PersistentVolumeClaim（详情、编辑、删除）
+- StorageClass（列表、删除）
 
 ### 8. 策略管理
-- HPA（列表、副本范围、指标、当前/期望副本）
-- LimitRange（列表、资源限制）
+- HPA（列表、创建、删除）
+- LimitRange（列表、创建、删除）
 
-### 9. 事件管理
-- 事件列表（类型、原因、对象、消息）
-- 按命名空间过滤
+### 9. 用户中心
+- 用户管理（创建、编辑、删除、启用/禁用）
+- 角色管理（创建、编辑、删除）
+- 权限控制（模块级 + 资源级）
+- 集群授权（用户可访问的集群）
+- 个人设置（修改信息、修改密码）
 
-## API 接口
+### 10. 监控告警
+- 监控中心（CPU/内存/磁盘/网络指标）
+- Prometheus 集成（自动检测、PromQL 查询）
+- 告警规则管理（CRUD）
+- 告警历史查看
+- 后台告警检查
 
-### 集群
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | /api/health | 健康检查 |
-| GET | /api/cluster/overview | 集群概览 |
-| GET | /api/nodes | 节点列表 |
-| GET | /api/nodes/get?name=xxx | 节点详情 |
-| GET | /api/namespaces | 命名空间列表 |
+### 11. 审计日志
+- 操作审计（创建、更新、删除操作记录）
+- 审计日志查询
 
-### Pod
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | /api/pods?namespace=xxx | Pod 列表 |
-| GET | /api/pods/get?namespace=xxx&name=xxx | Pod 详情 |
-| GET | /api/pods/logs?namespace=xxx&pod=xxx | Pod 日志 |
-| POST | /api/pods/exec | 执行命令 |
-| POST | /api/pods/portforward | 端口转发 |
-| POST | /api/pods/restart?namespace=xxx&name=xxx | 重启 Pod |
-| DELETE | /api/pods/delete?namespace=xxx&name=xxx | 删除 Pod |
+### 12. 资源关系图
+- 可视化资源关联关系
+- 支持拖拽、缩放
+- 点击跳转到资源详情
 
-### Deployment
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | /api/deployments?namespace=xxx | Deployment 列表 |
-| POST | /api/deployments/scale | 扩缩容 |
-| POST | /api/deployments/rollback | 回滚 |
-| POST | /api/deployments/restart?namespace=xxx&name=xxx | 重启 |
-| DELETE | /api/deployments/delete?namespace=xxx&name=xxx | 删除 |
+### 13. 命名空间视图
+- 命名空间资源脑图
+- 支持展开/收起
 
-### RBAC
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | /api/roles?namespace=xxx | Role 列表 |
-| GET | /api/clusterroles | ClusterRole 列表 |
-| GET | /api/rolebindings?namespace=xxx | RoleBinding 列表 |
-| GET | /api/clusterrolebindings | ClusterRoleBinding 列表 |
-| GET | /api/serviceaccounts?namespace=xxx | ServiceAccount 列表 |
+## 权限体系
 
-### 存储
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | /api/persistentvolumes | PV 列表 |
-| GET | /api/persistentvolumeclaims?namespace=xxx | PVC 列表 |
-| GET | /api/storageclasses | StorageClass 列表 |
+### 预设角色
+| 角色 | 工作负载 | 网络 | 存储 | RBAC | 用户中心 |
+|------|---------|------|------|------|---------|
+| 管理员 | 读写 | 读写 | 读写 | 读写 | 完全访问 |
+| 开发者 | 读写 | 只读 | 只读 | 无 | 个人设置 |
+| 只读用户 | 只读 | 只读 | 只读 | 无 | 个人设置 |
 
-### 策略
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | /api/limitranges?namespace=xxx | LimitRange 列表 |
-| GET | /api/hpas?namespace=xxx | HPA 列表 |
-| GET | /api/resourcequotas?namespace=xxx | ResourceQuota 列表 |
-| POST | /api/resourcequotas/create | 创建 ResourceQuota |
-| POST | /api/resourcequotas/update | 更新 ResourceQuota |
+### 集群授权
+- 管理员自动拥有所有集群访问权限
+- 其他用户需要管理员分配可访问的集群
 
 ## 快速开始
 
@@ -150,8 +127,9 @@ ops-kubernetes/
 │   ├── internal/
 │   │   ├── api/               # 路由注册
 │   │   ├── config/            # 配置
+│   │   ├── database/          # 数据库
 │   │   ├── handler/           # HTTP 处理器
-│   │   ├── middleware/        # 中间件
+│   │   ├── middleware/        # 中间件（认证、权限、审计）
 │   │   ├── model/             # 数据模型
 │   │   └── service/           # 业务逻辑
 │   └── pkg/                   # 公共包
@@ -159,9 +137,10 @@ ops-kubernetes/
 │   └── src/
 │       ├── api/               # API 层
 │       ├── components/        # 组件
+│       ├── composables/       # 组合函数
 │       ├── router/            # 路由
 │       ├── store/             # 状态管理
-│       └── views/             # 页面视图
+│       └── views/             # 页面视图（34个）
 ├── deploy/                     # 部署配置
 │   ├── docker/                # Dockerfile
 │   ├── helm/                  # Helm Chart
