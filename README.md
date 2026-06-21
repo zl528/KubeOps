@@ -101,6 +101,20 @@
 
 ## 快速开始
 
+### Docker Compose 一键启动（推荐）
+
+```bash
+# 克隆项目
+git clone https://github.com/zl528/KubeOps.git
+cd KubeOps
+
+# 一键启动（MySQL + 后端 + 前端）
+docker compose up -d
+
+# 访问前端：http://localhost:3000
+# 默认登录：admin / admin123
+```
+
 ### 开发环境
 
 ```bash
