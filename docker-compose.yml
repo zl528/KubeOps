@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: kubeops-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: kubeops123
+      MYSQL_DATABASE: kubeops
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    command: --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pkubeops123"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile.backend
+    container_name: kubeops-backend
+    ports:
+      - "8080:8080"
+    environment:
+      DB_TYPE: mysql
+      MYSQL_DSN: "root:kubeops123@tcp(mysql:3306)/kubeops?parseTime=true&charset=utf8mb4"
+      MODE: release
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile.frontend
+    container_name: kubeops-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+volumes:
+  mysql_data:
