@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>K8s 资源树 — 银杏风格</title>
+<style>
+  * { margin: 0; padding: 0; }
+  body { background: #1a1a1a; overflow: hidden; cursor: crosshair; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const C = document.getElementById('c');
+const X = C.getContext('2d');
+let W, H;
+
+const rng = (a=1,b)=> b===undefined ? Math.random()*a : a+Math.random()*(b-a);
+const pick = a => a[Math.floor(Math.random()*a.length)];
+
+let windX = 0, windY = 0;
+let mouseX = -1000, mouseY = -1000;
+
+window.addEventListener('mousemove', e => {
+  windX += (e.clientX - mouseX) * 0.05;
+  windY += (e.clientY - mouseY) * 0.02;
+  mouseX = e.clientX;
+  mouseY = e.clientY;
+});
+
+let off, O;
+let tips = [];
+let resourceNodes = [];
+
+function initCanvas() {
+  W = C.width = window.innerWidth;
+  H = C.height = window.innerHeight;
+  off = document.createElement('canvas');
+  off.width = W; off.height = H;
+  O = off.getContext('2d');
+  tips = [];
+  resourceNodes = [];
+  drawScene();
+  initLeaves();
+}
+
+function drawBg() {
+  const sky = O.createLinearGradient(0,0,0,H);
+  sky.addColorStop(0,   '#0a0a1a');
+  sky.addColorStop(0.35,'#1a1a2e');
+  sky.addColorStop(0.55,'#16213e');
+  sky.addColorStop(0.72,'#1a2a3a');
+  sky.addColorStop(1,   '#0d1f0d');
+  O.fillStyle = sky;
+  O.fillRect(0,0,W,H);
+
+  O.fillStyle = 'rgba(20,30,40,0.6)';
+  O.beginPath();
+  O.moveTo(0, H*0.68);
+  for (let x=0; x<=W; x+=8) {
+    O.lineTo(x, H*0.68 + Math.sin(x*0.004)*40 + Math.sin(x*0.011)*18);
+  }
+  O.lineTo(W,H); O.lineTo(0,H); O.fill();
+
+  O.fillStyle = '#1a2a1a';
+  O.beginPath();
+  O.moveTo(0, H*0.82);
+  for (let x=0; x<=W; x+=6) {
+    O.lineTo(x, H*0.82 + Math.sin(x*0.007)*10 + Math.sin(x*0.019)*5);
+  }
+  O.lineTo(W,H); O.lineTo(0,H); O.fill();
+}
+
+function drawLightRays() {
+  O.save();
+  O.globalCompositeOperation = 'screen';
+  const cx = W * 0.8, cy = -H * 0.1;
+  for(let i=0; i<5; i++) {
+    const ang = rng(0.8, 1.2);
+    const len = H * 1.5;
+    const spread = rng(0.1, 0.3);
+    const grd = O.createLinearGradient(cx, cy, cx + Math.cos(ang)*len, cy + Math.sin(ang)*len);
+    grd.addColorStop(0, 'rgba(100, 200, 150, 0.06)');
+    grd.addColorStop(1, 'rgba(80, 180, 120, 0)');
+    O.fillStyle = grd;
+    O.beginPath();
+    O.moveTo(cx, cy);
+    O.lineTo(cx + Math.cos(ang - spread)*len, cy + Math.sin(ang - spread)*len);
+    O.lineTo(cx + Math.cos(ang + spread)*len, cy + Math.sin(ang + spread)*len);
+    O.closePath();
+    O.fill();
+  }
+  O.restore();
+}
+
+function branch(x, y, ang, len, w, depth, maxD) {
+  if (depth > maxD || w < 0.5) return;
+  const gravity = w < 4 ? 0.15 : 0.05;
+  const a = ang + gravity * Math.sin(ang + Math.PI/2);
+  const ex = x + Math.cos(a) * len;
+  const ey = y + Math.sin(a) * len;
+  const mx = (x+ex)/2 + rng(-len*0.08, len*0.08);
+  const my = (y+ey)/2 + rng(-len*0.04, len*0.04);
+
+  for(let i=-1; i<=1; i++) {
+    O.beginPath();
+    O.moveTo(x + i*w*0.2, y);
+    O.quadraticCurveTo(mx + i*w*0.2, my, ex + i*w*0.2, ey);
+    const v = 35 + depth*3 - Math.abs(i)*5;
+    O.strokeStyle = `rgba(${v+8},${v+2},${v-5}, ${1 - Math.abs(i)*0.3})`;
+    O.lineWidth = w * (1 - Math.abs(i)*0.3);
+    O.lineCap = 'round';
+    O.stroke();
+  }
+
+  if (depth >= maxD - 2 && w < 3) {
+    tips.push({x: ex, y: ey, depth: depth});
+  }
+
+  let n, spread;
+  if (w > 10) { n = 2; spread = rng(0.25, 0.45); }
+  else if (w > 4) { n = pick([2,2,3]); spread = rng(0.3, 0.6); }
+  else { n = pick([2,3]); spread = rng(0.3, 0.7); }
+
+  for (let i = 0; i < n; i++) {
+    const t = n===1 ? 0 : (i/(n-1) - 0.5)*2;
+    let newAng = a + t * spread + rng(-0.1, 0.1);
+    if (depth > 3) {
+      const centerBias = (W/2 - x) * 0.0005;
+      const upwardBias = -0.1;
+      newAng += centerBias + upwardBias * Math.abs(t);
+    }
+    const newLen = len * rng(0.62, 0.80);
+    const newW   = w   * rng(0.58, 0.72);
+    branch(ex, ey, newAng, newLen, newW, depth+1, maxD);
+  }
+}
+
+function drawTree() {
+  const baseX = W * 0.5;
+  const baseY = H * 0.83;
+  O.fillStyle = '#2e3a22';
+  O.beginPath();
+  O.ellipse(baseX, baseY+5, 60, 12, 0, 0, Math.PI*2);
+  O.fill();
+  branch(baseX, baseY, -Math.PI/2 + rng(-0.02,0.02), H*0.15, 22, 0, 10);
+}
+
+const resourceTypes = {
+  pod:      { color: '#67C23A', name: 'Pod' },
+  deploy:   { color: '#409EFF', name: 'Deploy' },
+  service:  { color: '#E6A23C', name: 'Service' },
+  ingress:  { color: '#F56C6C', name: 'Ingress' },
+  configmap:{ color: '#FFD700', name: 'ConfigMap' },
+  secret:   { color: '#909399', name: 'Secret' },
+};
+
+const leafPalette = ['#c9a832','#b89828','#d4b23a','#67C23A','#409EFF','#E6A23C','#F56C6C','#90EE90','#82e0aa','#7dcea0'];
+
+function drawLeafShape(ctx, size, type) {
+  const s = size;
+  if (type === 'ginkgo') {
+    ctx.beginPath();
+    ctx.moveTo(0, s*0.4);
+    ctx.bezierCurveTo(-s*0.05, s*0.15, -s*0.55, -s*0.05, -s*0.5, -s*0.45);
+    ctx.bezierCurveTo(-s*0.35, -s*0.25, -s*0.1, -s*0.28, 0, -s*0.18);
+    ctx.bezierCurveTo( s*0.1, -s*0.28,  s*0.35, -s*0.25,  s*0.5, -s*0.45);
+    ctx.bezierCurveTo( s*0.55, -s*0.05,  s*0.05, s*0.15, 0, s*0.4);
+    ctx.closePath();
+  } else if (type === 'maple') {
+    ctx.beginPath();
+    ctx.moveTo(0, s*0.4);
+    ctx.lineTo(-s*0.15, s*0.1);
+    ctx.lineTo(-s*0.4, s*0.15);
+    ctx.lineTo(-s*0.25, -s*0.05);
+    ctx.lineTo(-s*0.5, -s*0.3);
+    ctx.lineTo(-s*0.15, -s*0.2);
+    ctx.lineTo(0, -s*0.45);
+    ctx.lineTo(s*0.15, -s*0.2);
+    ctx.lineTo(s*0.5, -s*0.3);
+    ctx.lineTo(s*0.25, -s*0.05);
+    ctx.lineTo(s*0.4, s*0.15);
+    ctx.lineTo(s*0.15, s*0.1);
+    ctx.closePath();
+  } else {
+    ctx.beginPath();
+    ctx.moveTo(0, s*0.4);
+    ctx.quadraticCurveTo(s*0.3, 0, 0, -s*0.4);
+    ctx.quadraticCurveTo(-s*0.3, 0, 0, s*0.4);
+    ctx.closePath();
+  }
+}
+
+function drawResourceNode(x, y, type, size) {
+  const r = resourceTypes[type];
+  O.save();
+  
+  O.shadowBlur = 25;
+  O.shadowColor = r.color;
+  
+  const grd = O.createRadialGradient(x, y, 0, x, y, size * 1.5);
+  grd.addColorStop(0, r.color);
+  grd.addColorStop(0.5, r.color + '88');
+  grd.addColorStop(1, r.color + '00');
+  O.fillStyle = grd;
+  O.beginPath();
+  O.arc(x, y, size * 1.5, 0, Math.PI * 2);
+  O.fill();
+  
+  O.shadowBlur = 15;
+  O.fillStyle = r.color;
+  O.beginPath();
+  O.arc(x, y, size, 0, Math.PI * 2);
+  O.fill();
+  
+  O.shadowBlur = 0;
+  O.fillStyle = 'rgba(255,255,255,0.4)';
+  O.beginPath();
+  O.arc(x - size*0.3, y - size*0.3, size*0.3, 0, Math.PI * 2);
+  O.fill();
+  
+  O.fillStyle = '#ffffff';
+  O.font = `bold ${Math.max(10, size*0.8)}px Arial`;
+  O.textAlign = 'center';
+  O.fillText(r.name, x, y + size + 14);
+  
+  O.restore();
+}
+
+function drawStaticLeaves() {
+  const leafTypes = ['ginkgo', 'maple', 'simple'];
+  
+  tips.forEach(t => {
+    if (Math.random() > 0.5) return;
+    const count = Math.floor(rng(1,3));
+    for (let i=0; i<count; i++) {
+      const lx = t.x + rng(-18,18);
+      const ly = t.y + rng(-18,10);
+      const sz = rng(6,13);
+      const rot = rng(-Math.PI, Math.PI);
+      O.save();
+      O.translate(lx, ly);
+      O.rotate(rot);
+      O.globalAlpha = rng(0.55, 0.85);
+      drawLeafShape(O, sz, pick(leafTypes));
+      O.fillStyle = pick(leafPalette);
+      O.fill();
+      O.restore();
+    }
+  });
+
+  for (let i=0; i<35; i++) {
+    const gx = rng(80, W-80);
+    const gy = H*0.82 + Math.sin(gx*0.007)*10 + rng(2,25);
+    const sz = rng(4,10);
+    O.save();
+    O.translate(gx, gy);
+    O.rotate(rng(0, Math.PI*2));
+    O.globalAlpha = rng(0.3, 0.6);
+    drawLeafShape(O, sz, pick(leafTypes));
+    O.fillStyle = pick(leafPalette);
+    O.fill();
+    O.restore();
+  }
+}
+
+function addGrain() {
+  const imgData = O.getImageData(0,0,W,H);
+  const d = imgData.data;
+  for (let i=0; i<d.length; i+=4) {
+    const noise = (Math.random()-0.5) * 12;
+    d[i] += noise; d[i+1] += noise; d[i+2] += noise;
+  }
+  O.putImageData(imgData, 0, 0);
+}
+
+function addVignette() {
+  const vg = O.createRadialGradient(W/2, H/2, W*0.25, W/2, H/2, W*0.75);
+  vg.addColorStop(0, 'rgba(0,0,0,0)');
+  vg.addColorStop(1, 'rgba(0,0,0,0.5)');
+  O.fillStyle = vg;
+  O.fillRect(0,0,W,H);
+}
+
+function drawClusterLabel() {
+  O.save();
+  O.fillStyle = '#4a7c4a';
+  O.font = 'bold 14px Arial';
+  O.textAlign = 'center';
+  O.shadowBlur = 10;
+  O.shadowColor = '#67C23A';
+  O.fillText('🌳 my-cluster', W/2, H*0.92);
+  O.restore();
+}
+
+function drawResourceNodesOverlay() {
+  const baseX = W * 0.5;
+  const baseY = H * 0.83;
+  
+  const nodes = [
+    {x: baseX - 180, y: baseY - 120, type: 'pod', size: 12},
+    {x: baseX - 100, y: baseY - 160, type: 'deploy', size: 11},
+    {x: baseX + 100, y: baseY - 160, type: 'service', size: 11},
+    {x: baseX + 180, y: baseY - 120, type: 'ingress', size: 12},
+    {x: baseX, y: baseY - 200, type: 'configmap', size: 10},
+    {x: baseX - 50, y: baseY - 100, type: 'secret', size: 9},
+    {x: baseX + 50, y: baseY - 100, type: 'pod', size: 10},
+  ];
+  
+  nodes.forEach(n => {
+    drawResourceNode(n.x, n.y, n.type, n.size);
+  });
+}
+
+function drawScene() {
+  drawBg();
+  drawLightRays();
+  drawTree();
+  drawStaticLeaves();
+  drawResourceNodesOverlay();
+  drawClusterLabel();
+  addVignette();
+  addGrain();
+}
+
+let leaves = [];
+
+function initLeaves() {
+  leaves = [];
+  for (let i=0; i<30; i++) {
+    leaves.push({
+      x: rng(0, W), y: rng(-H, 0),
+      s: rng(5, 14),
+      r: rng(0, Math.PI*2), vr: rng(-0.02, 0.02),
+      flipPhase: rng(0, Math.PI*2), flipSpeed: rng(1.5, 3.0),
+      vy: rng(0.5, 1.2), vx: rng(-0.4, 0.2),
+      sway: rng(0.4, 1.2), phase: rng(0, Math.PI*2),
+      color: pick(leafPalette), alpha: rng(0.5, 0.85),
+      type: pick(['ginkgo', 'maple', 'simple']),
+    });
+  }
+}
+
+let t = 0;
+function frame() {
+  t += 0.016;
+  windX *= 0.95;
+  windY *= 0.95;
+
+  X.clearRect(0,0,W,H);
+  X.drawImage(off, 0, 0);
+
+  leaves.forEach(l => {
+    l.y += l.vy + windY * 0.1;
+    l.x += l.vx + Math.sin(t*1.2 + l.phase) * l.sway * 0.3 + windX;
+    l.r += l.vr + windX * 0.05;
+    l.flipPhase += l.flipSpeed * 0.05;
+
+    if (l.y > H + 20) {
+      l.y = rng(-40, -10);
+      l.x = rng(0, W);
+    }
+    if (l.x > W + 50) l.x = -50;
+    if (l.x < -50) l.x = W + 50;
+
+    X.save();
+    X.translate(l.x, l.y);
+    X.rotate(l.r);
+    const flip = Math.cos(l.flipPhase);
+    X.scale(flip, 1);
+    X.globalAlpha = l.alpha * (0.5 + Math.abs(flip) * 0.5);
+    drawLeafShape(X, l.s, l.type);
+    X.fillStyle = l.color;
+    X.fill();
+    X.restore();
+  });
+
+  requestAnimationFrame(frame);
+}
+
+initCanvas();
+frame();
+window.addEventListener('resize', initCanvas);
+</script>
+</body>
+</html>

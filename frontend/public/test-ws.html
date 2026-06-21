@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head><title>WS Test</title></head>
+<body>
+<h1>WebSocket Test</h1>
+<pre id="output">Connecting...</pre>
+<script>
+const ws = new WebSocket('ws://192.168.79.147:8080/api/pods/exec/ws');
+const output = document.getElementById('output');
+
+ws.onopen = () => {
+  output.textContent += '\nConnected!';
+  ws.send(JSON.stringify({
+    namespace: 'default',
+    pod: 'redis',
+    container: '',
+    command: ['/bin/sh', '-c', 'echo hello-from-test'],
+    columns: 80,
+    rows: 24
+  }));
+  output.textContent += '\nSent exec command';
+};
+
+ws.onmessage = (e) => {
+  output.textContent += '\nReceived: ' + e.data;
+};
+
+ws.onerror = (e) => {
+  output.textContent += '\nError: ' + e.message;
+};
+
+ws.onclose = (e) => {
+  output.textContent += '\nClosed: ' + e.code + ' ' + e.reason;
+};
+</script>
+</body>
+</html>
