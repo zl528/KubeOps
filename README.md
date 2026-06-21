@@ -6,7 +6,7 @@
 
 - **前端**: Vue 3 + TypeScript + Element Plus + ECharts
 - **后端**: Go + client-go
-- **数据库**: SQLite
+- **数据库**: SQLite（默认）/ MySQL
 - **部署**: 支持 K8s 集群内部署和独立部署
 
 ## 功能模块
@@ -116,6 +116,19 @@ make dev
 
 # 运行测试
 make test
+```
+
+### 使用 MySQL
+
+默认使用 SQLite，如需使用 MySQL：
+
+```bash
+# 设置环境变量
+export DB_TYPE=mysql
+export MYSQL_DSN="user:password@tcp(host:port)/dbname?parseTime=true"
+
+# 启动服务
+make dev
 ```
 
 ### 生产部署
